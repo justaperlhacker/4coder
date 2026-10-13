@@ -36,6 +36,12 @@ function b32 F4_Tags_Jump(Application_Links *app, View_ID view, F4_Tag *tag);
 //~ Go to the definition of the identifier under the cursor's view via tags.
 function b32 F4_Tags_GoToDef(Application_Links *app, View_ID view);
 
+//~ Resolve an identifier string to a (buffer,pos) location via tags (same-dir
+//~ Pick heuristic relative to from_buffer). Shared by go-to-def and code peek.
+function b32 F4_Tags_ResolveByName(Application_Links *app, Arena *scratch,
+                                   String_Const_u8 name, Buffer_ID from_buffer,
+                                   Buffer_ID *buffer_out, i64 *pos_out);
+
 //~ The single global tag table.
 global F4_TagTable f4_tag_table = {};
 

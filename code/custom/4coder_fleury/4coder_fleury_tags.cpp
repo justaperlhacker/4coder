@@ -138,11 +138,13 @@ f4_tag_absolutize(Arena *arena, String_Const_u8 table_dir, String_Const_u8 file)
                            string_expand(table_dir), string_expand(file));
 }
 
+//~ Resolve a tag into (buffer, pos), opening the target file if it isn't
+//~ already loaded. Used by both the jump command and code peek.
 function b32
-F4_Tags_Jump(Application_Links *app, View_ID view, F4_Tag *tag)
+F4_Tags_Resolve(Application_Links *app, Arena *scratch, F4_Tag *tag,
+                Buffer_ID *buffer_out, i64 *pos_out)
 {
-    if(view == 0 || tag == 0) return 0;
-    Scratch_Block scratch(app);
+    if(tag == 0) return 0;
     String_Const_u8 table_dir = f4_tag_dir_of(scratch, f4_tag_table.source_path);
     String_Const_u8 abs_path = f4_tag_absolutize(scratch, table_dir, tag->file);
 
@@ -179,18 +181,42 @@ F4_Tags_Jump(Application_Links *app, View_ID view, F4_Tag *tag)
         target_pos = 0;
     }
 
+    *buffer_out = buffer;
+    *pos_out = target_pos;
+    return 1;
+}
+
+//~ Move `view` to (buffer,pos): record a jump point, switch buffers, center the
+//~ line, and put cursor+mark at pos. Shared by jump and go-to-def.
+internal void
+f4_tag_goto_view(Application_Links *app, View_ID view, Buffer_ID buffer, i64 pos)
+{
     Rect_f32 region = view_get_buffer_region(app, view);
     f32 view_height = rect_height(region);
     point_stack_push_view_cursor(app, view);
     view_set_buffer(app, view, buffer, 0);
-    i64 line_number = get_line_number_from_pos(app, buffer, target_pos);
+    i64 line_number = get_line_number_from_pos(app, buffer, pos);
     Buffer_Scroll scroll = view_get_buffer_scroll(app, view);
     scroll.position.line_number = line_number;
     scroll.target.line_number = line_number;
     scroll.position.pixel_shift.y = scroll.target.pixel_shift.y = -view_height*0.5f;
     view_set_buffer_scroll(app, view, scroll, SetBufferScroll_SnapCursorIntoView);
-    view_set_cursor_and_preferred_x(app, view, seek_pos(target_pos));
-    view_set_mark(app, view, seek_pos(target_pos));
+    view_set_cursor_and_preferred_x(app, view, seek_pos(pos));
+    view_set_mark(app, view, seek_pos(pos));
+}
+
+function b32
+F4_Tags_Jump(Application_Links *app, View_ID view, F4_Tag *tag)
+{
+    if(view == 0 || tag == 0) return 0;
+    Scratch_Block scratch(app);
+    Buffer_ID buffer = 0;
+    i64 pos = 0;
+    if(!F4_Tags_Resolve(app, scratch, tag, &buffer, &pos))
+    {
+        return 0;
+    }
+    f4_tag_goto_view(app, view, buffer, pos);
     return 1;
 }
 
@@ -201,23 +227,40 @@ F4_Tags_Enabled(Application_Links *app)
     return def_get_config_b32(vars_save_string_lit("disable_tags_fallback")) == 0;
 }
 
+//~ Resolve an identifier *string* to a (buffer,pos) location via tags, honouring
+//~ the same-directory Pick heuristic relative to `from_buffer`. Returns 0 when
+//~ tags are disabled, absent, or the name is not found. Shared by go-to-def
+//~ fallback and code peek so both agree on where a symbol lives.
+function b32
+F4_Tags_ResolveByName(Application_Links *app, Arena *scratch, String_Const_u8 name,
+                      Buffer_ID from_buffer, Buffer_ID *buffer_out, i64 *pos_out)
+{
+    if(!F4_Tags_Enabled(app) || name.size == 0) return 0;
+    if(!F4_Tags_EnsureFresh(app, &f4_tag_table)) return 0;
+    F4_Tag *chain = F4_Tags_Lookup(&f4_tag_table, name);
+    if(chain == 0) return 0;
+    String_Const_u8 from_file = (from_buffer != 0)
+        ? push_buffer_file_name(app, scratch, from_buffer)
+        : (String_Const_u8){0, 0};
+    F4_Tag *best = F4_Tags_Pick(chain, from_file);
+    return F4_Tags_Resolve(app, scratch, best, buffer_out, pos_out);
+}
+
 function b32
 F4_Tags_GoToDef(Application_Links *app, View_ID view)
 {
     if(view == 0) return 0;
-    if(!F4_Tags_EnsureFresh(app, &f4_tag_table))
-    {
-        return 0;
-    }
     Scratch_Block scratch(app);
     Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
     String_Const_u8 name = push_token_or_word_under_active_cursor(app, scratch);
-    if(name.size == 0) return 0;
-    F4_Tag *chain = F4_Tags_Lookup(&f4_tag_table, name);
-    if(chain == 0) return 0;
-    String_Const_u8 from_file = push_buffer_file_name(app, scratch, buffer);
-    F4_Tag *best = F4_Tags_Pick(chain, from_file);
-    return F4_Tags_Jump(app, view, best);
+    Buffer_ID out_buffer = 0;
+    i64 out_pos = 0;
+    if(!F4_Tags_ResolveByName(app, scratch, name, buffer, &out_buffer, &out_pos))
+    {
+        return 0;
+    }
+    f4_tag_goto_view(app, view, out_buffer, out_pos);
+    return 1;
 }
 
 //~ --------------------------------------------------------------------------
