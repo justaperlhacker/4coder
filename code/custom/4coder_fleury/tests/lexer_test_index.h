@@ -105,18 +105,38 @@ lex_test_reset_index(void)
 //~ Token iterator (mirrors 4coder_token.cpp)
 //~ ---------------------------------------------------------------------------
 
+internal i64
+token_index_from_pos_in(Token *tokens, i64 count, i64 pos)
+{
+    if(count <= 0){ return 0; }
+    for(i64 i = 0; i < count; i += 1)
+    {
+        i64 start = tokens[i].pos;
+        i64 end = start + tokens[i].size;
+        if(pos >= start && pos < end)
+        {
+            return i;
+        }
+    }
+    i64 index = count - 1;
+    while(index > 0 && tokens[index].pos > pos)
+    {
+        index -= 1;
+    }
+    return index;
+}
+
 internal Token_Iterator_Array
 token_iterator_pos(u64 user_id, Token_Array *tokens, i64 pos)
 {
     Token_Iterator_Array it = {};
     if(tokens->tokens != 0 && tokens->count > 0)
     {
-        if(pos < 0) pos = 0;
-        if(pos > tokens->count - 1) pos = tokens->count - 1;
+        i64 index = token_index_from_pos_in(tokens->tokens, tokens->count, pos);
         it.user_id = user_id;
         it.tokens = tokens->tokens;
         it.count = tokens->count;
-        it.ptr = tokens->tokens + pos;
+        it.ptr = tokens->tokens + index;
     }
     return it;
 }
@@ -148,6 +168,38 @@ token_it_inc_non_whitespace(Token_Iterator_Array *it)
     b32 result = false;
 repeat:
     if(token_it_inc_all(it))
+    {
+        Token *token = token_it_read(it);
+        if(token != 0 && token->kind == TokenBaseKind_Whitespace)
+        {
+            goto repeat;
+        }
+        result = true;
+    }
+    return result;
+}
+
+internal b32
+token_it_dec_all(Token_Iterator_Array *it)
+{
+    b32 result = false;
+    if(it->tokens != 0)
+    {
+        if(it->ptr > it->tokens)
+        {
+            it->ptr -= 1;
+            result = true;
+        }
+    }
+    return result;
+}
+
+internal b32
+token_it_dec_non_whitespace(Token_Iterator_Array *it)
+{
+    b32 result = false;
+repeat:
+    if(token_it_dec_all(it))
     {
         Token *token = token_it_read(it);
         if(token != 0 && token->kind == TokenBaseKind_Whitespace)
@@ -391,5 +443,82 @@ F4_Index_ParsePattern(F4_Index_ParseCtx *ctx, char *fmt, ...)
 
 //~ The hook macro, now that the ctx type exists.
 #define F4_LANGUAGE_INDEXFILE(name) void name(F4_Index_ParseCtx *ctx)
+
+//~ ---------------------------------------------------------------------------
+//~ PosContext support: a fake "current buffer" the language PosContext hooks
+//~ read through get_token_array_from_buffer / push_whole_buffer, plus the
+//~ F4_Language_PosContextData plumbing those hooks push into.
+//~ ---------------------------------------------------------------------------
+#define push_array_zero(a, T, c) ((T*)calloc((c), sizeof(T)))
+
+static Token_Array      g_hb_tokens;   // current buffer's token array
+static String_Const_u8  g_hb_text;     // current buffer's full text
+
+internal void
+lex_test_set_current_buffer(Token_Array toks, String_Const_u8 text)
+{
+    g_hb_tokens = toks;
+    g_hb_text = text;
+}
+
+internal Token_Array
+get_token_array_from_buffer(void *app, int buffer)
+{
+    (void)app; (void)buffer;
+    return g_hb_tokens;
+}
+
+internal String_Const_u8
+push_whole_buffer(void *app, Arena *arena, int buffer)
+{
+    (void)app; (void)arena; (void)buffer;
+    return g_hb_text;
+}
+
+internal String_Const_u8
+push_buffer_range(void *app, Arena *arena, int buffer, Range_i64 r)
+{
+    (void)app; (void)arena; (void)buffer;
+    return string_substring(g_hb_text, r);
+}
+
+struct F4_Language_PosContextData{
+    F4_Language_PosContextData *next;
+    F4_Index_Note *relevant_note;
+    Token *query_token;
+    int argument_index;
+};
+
+internal void
+F4_Language_PosContext_PushData(Arena *arena,
+                                 F4_Language_PosContextData **first_ptr,
+                                 F4_Language_PosContextData **last_ptr,
+                                 F4_Index_Note *note,
+                                 Token *query,
+                                 int arg_index)
+{
+    F4_Language_PosContextData *first = *first_ptr;
+    F4_Language_PosContextData *last = *last_ptr;
+    F4_Language_PosContextData *func = push_array_zero(arena, F4_Language_PosContextData, 1);
+    func->relevant_note = note;
+    func->query_token = query;
+    func->argument_index = arg_index;
+    if(last == 0){ first = last = func; }
+    else { last->next = func; last = last->next; }
+    *first_ptr = first;
+    *last_ptr = last;
+}
+
+internal void
+F4_Language_PosContext_PushData_Call(Arena *arena,
+                                     F4_Language_PosContextData **first_ptr,
+                                     F4_Language_PosContextData **last_ptr,
+                                     String_Const_u8 string, int param_idx)
+{
+    F4_Language_PosContext_PushData(arena, first_ptr, last_ptr, F4_Index_LookupNote(string), 0, param_idx);
+}
+
+#undef F4_LANGUAGE_POSCONTEXT
+#define F4_LANGUAGE_POSCONTEXT(name) F4_Language_PosContextData* name(void *app, Arena *arena, int buffer, i64 pos)
 
 #endif // FCODER_FLEURY_LEXER_TEST_INDEX_H

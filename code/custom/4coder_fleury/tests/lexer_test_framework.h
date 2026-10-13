@@ -25,6 +25,7 @@
 typedef void (*LexInitFn)(void *, String_Const_u8);
 typedef b32 (*LexFullInputFn)(Arena *, Token_List *, void *, u64);
 typedef void (*IndexFileFn)(F4_Index_ParseCtx *);
+typedef F4_Language_PosContextData *(*PosContextFn)(void *, Arena *, int, i64);
 
 struct TokExpect{
     Token_Base_Kind kind;
@@ -52,6 +53,22 @@ struct IndexCase{
     int expect_count;
 };
 
+//~ A resolved call site the PosContext hook should report: callee note name +
+//~ which argument (0-based) the cursor sits in.
+struct PExpect{
+    const char *callee;
+    int arg_index;
+};
+
+//~ src may embed a '\001' marker showing where the cursor sits; the runner
+//~ strips it and uses its offset as the query position.
+struct PCase{
+    const char *name;
+    const char *src;
+    PExpect *expects;
+    int expect_count;
+};
+
 struct Suite{
     const char *language;
     LexInitFn LexInit;
@@ -62,6 +79,9 @@ struct Suite{
     IndexFileFn IndexFile;
     IndexCase *index_cases;
     int index_case_count;
+    PosContextFn PosContext;
+    PCase *pcases;
+    int pcase_count;
 };
 
 //~ Shorthand for entries inside an IndexExpect array.
@@ -70,6 +90,9 @@ struct Suite{
 //~ Shorthand for a case that asserts the set of indexed symbols.
 #define ICASE(cname, csrc, syms) \
     { (cname), (csrc), (syms), ArrayCount(syms) }
+
+#define PEXPECT(callee, arg) { (callee), (arg) }
+#define PCASE(pname, psrc, exps) { (pname), (psrc), (exps), ArrayCount(exps) }
 
 //~ Shorthand for the entries inside a TokExpect array.
 #define EXPECT(kind, text) { (kind), (text) }
@@ -340,6 +363,111 @@ run_index_case(Suite *s, IndexCase *c)
     free(toks);
 }
 
+//~ Runs one PosContext case: strips the '\001' cursor marker, lexes, seeds the
+//~ index via IndexFile, then invokes the language PosContext hook at the cursor
+//~ and checks the returned call-site list matches the expected callees/args.
+internal void
+run_pcontext_case(Suite *s, PCase *c)
+{
+    lex_test_reset_token_stream();
+    lex_test_reset_index();
+
+    //~ Strip the cursor marker from src, remembering its byte offset.
+    char clean[4096];
+    i64 cursor = 0;
+    i64 n = 0;
+    b32 have_marker = 0;
+    for(const char *p = c->src; *p; p += 1)
+    {
+        if(*p == '\001')
+        {
+            cursor = n;
+            have_marker = 1;
+            continue;
+        }
+        clean[n++] = *p;
+    }
+    clean[n] = 0;
+
+    String_Const_u8 text = { (u8*)clean, (u64)n };
+    void *state = malloc(s->state_size);
+    memset(state, 0, s->state_size);
+    s->LexInit(state, text);
+    Token_List list = {};
+    s->LexFullInput(&g_arena, &list, state, (u64)-1);
+    free(state);
+
+    i64 count = 0;
+    Token *toks = lex_test_flatten_tokens(&g_arena, &count);
+    Token_Array arr = { toks, count, count };
+
+    //~ Seed the code index so the callee resolves through F4_Index_LookupNote.
+    {
+        F4_Index_File file = {};
+        F4_Index_ParseCtx ctx = {};
+        ctx.file = &file;
+        ctx.string = text;
+        ctx.tokens = arr;
+        ctx.it = token_iterator_pos(0, &ctx.tokens, 0);
+        s->IndexFile(&ctx);
+    }
+
+    //~ Drive the PosContext hook against a fake current buffer.
+    lex_test_set_current_buffer(arr, text);
+    F4_Language_PosContextData *data = s->PosContext(0, &g_arena, 0, have_marker ? cursor : n);
+
+    //~ Compare the returned call-site list to expectations (in order).
+    b32 pass = 1;
+    F4_Language_PosContextData *d = data;
+    for(int e = 0; e < c->expect_count; e += 1)
+    {
+        if(!d)
+        {
+            pass = 0;
+            break;
+        }
+        if(!d->relevant_note)
+        {
+            pass = 0;
+            break;
+        }
+        String_Const_u8 want = { (u8*)c->expects[e].callee, (u64)strlen(c->expects[e].callee) };
+        if(!string_match(want, d->relevant_note->string) ||
+           d->argument_index != c->expects[e].arg_index)
+        {
+            pass = 0;
+            break;
+        }
+        d = d->next;
+    }
+    if(pass && d)
+    {
+        pass = 0; // extra entries
+    }
+
+    if(pass)
+    {
+        g_lex_pass += 1;
+        if(g_lex_verbose) printf("  PASS %s.posctx.%s\n", s->language, c->name);
+    }
+    else
+    {
+        g_lex_fail += 1;
+        printf("  FAIL %s.posctx.%s\n", s->language, c->name);
+        printf("    clean src: \"%s\" (cursor @%lld)\n", clean, (long long)cursor);
+        printf("    expected:");
+        for(int e = 0; e < c->expect_count; e += 1)
+            printf(" [%s arg=%d]", c->expects[e].callee, c->expects[e].arg_index);
+        printf("\n    got:     ");
+        for(F4_Language_PosContextData *x = data; x; x = x->next)
+            printf(" [%.*s arg=%d]", x->relevant_note ? (int)x->relevant_note->string.size : 2,
+                   x->relevant_note ? (char*)x->relevant_note->string.str : "na", x->argument_index);
+        printf("\n");
+    }
+
+    free(toks);
+}
+
 internal void
 run_suite(Suite *s)
 {
@@ -351,6 +479,10 @@ run_suite(Suite *s)
     for(int i = 0; i < s->index_case_count; i += 1)
     {
         run_index_case(s, &s->index_cases[i]);
+    }
+    for(int i = 0; i < s->pcase_count; i += 1)
+    {
+        run_pcontext_case(s, &s->pcases[i]);
     }
 }
 

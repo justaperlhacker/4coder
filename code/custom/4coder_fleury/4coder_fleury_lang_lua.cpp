@@ -3,6 +3,8 @@
 #ifndef FCODER_FLEURY_LANG_LUA_CPP
 #define FCODER_FLEURY_LANG_LUA_CPP
 
+#include "4coder_fleury_lang_script_shared.h"
+
 //~ NOTE: Hand-written Lua lexer for the Fleury layer.
 // Covers Lua 5.1-5.4 lexical grammar; syntax highlighting only for now.
 
@@ -468,7 +470,16 @@ internal F4_LANGUAGE_LEXFULLINPUT(F4_Lua_LexFullInput)
 
 internal F4_LANGUAGE_POSCONTEXT(F4_Lua_PosContext)
 {
-    return 0;
+    F4_Language_PosContextData *first = 0;
+    F4_Language_PosContextData *last = 0;
+    Token_Array tokens = get_token_array_from_buffer(app, buffer);
+    String_Const_u8 text = push_whole_buffer(app, arena, buffer);
+    F4_ScriptCallHit *hit = f4_script_scan_calls(arena, text, &tokens, pos);
+    for(; hit != 0; hit = hit->next)
+    {
+        F4_Language_PosContext_PushData_Call(arena, &first, &last, hit->name, hit->argument_index);
+    }
+    return first;
 }
 
 internal F4_LANGUAGE_HIGHLIGHT(F4_Lua_Highlight)

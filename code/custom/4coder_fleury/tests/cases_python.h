@@ -399,6 +399,20 @@ static IndexCase py_index_cases[] = {
           py_idx_comment_tag),
 };
 
+//~ ------------------------------------------------------------------------
+//~ PosContext cases — cursor ('\001') inside a call, expect resolved callee
+//~ (from the index) + 0-based argument slot. def is placed *after* the call so
+//~ IndexFile still registers the callee before PosContext looks it up.
+//~ ------------------------------------------------------------------------
+
+static PExpect py_pos_call1[] = { PEXPECT("greet", 1) };
+static PExpect py_pos_call0[] = { PEXPECT("greet", 0) };
+
+static PCase py_pcases[] = {
+    PCASE("call_second_arg", "greet(1, \0012)\ndef greet(a, b):\n    pass\n", py_pos_call1),
+    PCASE("call_first_arg",  "greet(\0011, 2)\ndef greet(a, b):\n    pass\n", py_pos_call0),
+};
+
 static Suite py_suite = {
     "python",
     (LexInitFn)F4_Py_LexInit,
@@ -406,6 +420,7 @@ static Suite py_suite = {
     sizeof(F4_Py_LexerState),
     py_cases, ArrayCount(py_cases),
     F4_Py_IndexFile, py_index_cases, ArrayCount(py_index_cases),
+    F4_Py_PosContext, py_pcases, ArrayCount(py_pcases),
 };
 
 #endif // FCODER_FLEURY_LEXER_TEST_CASES_PYTHON_H

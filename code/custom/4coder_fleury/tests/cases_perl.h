@@ -516,6 +516,19 @@ static IndexCase perl_index_cases[] = {
           "package Greeter; sub new { my $s = bless {}; return $s }\n", perl_idx_sub_and_pkg),
 };
 
+//~ ------------------------------------------------------------------------
+//~ PosContext cases — cursor ('\001') inside a call, expect resolved callee
+//~ (indexed from `sub`) + 0-based argument slot.
+//~ ------------------------------------------------------------------------
+
+static PExpect perl_pos_call1[] = { PEXPECT("greet", 1) };
+static PExpect perl_pos_call0[] = { PEXPECT("greet", 0) };
+
+static PCase perl_pcases[] = {
+    PCASE("call_second_arg", "greet(1, \0012);\nsub greet { }\n", perl_pos_call1),
+    PCASE("call_first_arg",  "greet(\0011, 2);\nsub greet { }\n", perl_pos_call0),
+};
+
 static Suite perl_suite = {
     "perl",
     (LexInitFn)F4_Perl_LexInit,
@@ -523,6 +536,7 @@ static Suite perl_suite = {
     sizeof(F4_Perl_LexerState),
     perl_cases, ArrayCount(perl_cases),
     F4_Perl_IndexFile, perl_index_cases, ArrayCount(perl_index_cases),
+    F4_Perl_PosContext, perl_pcases, ArrayCount(perl_pcases),
 };
 
 #endif // FCODER_FLEURY_LEXER_TEST_CASES_PERL_H

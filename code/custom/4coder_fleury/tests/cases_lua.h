@@ -322,6 +322,19 @@ static IndexCase lua_index_cases[] = {
     ICASE("comment_tag",         "-- @api exported\nlocal t = {}\n", lua_idx_comment_tag),
 };
 
+//~ ------------------------------------------------------------------------
+//~ PosContext cases — cursor ('\001') inside a call, expect resolved callee
+//~ (indexed from the `function` form) + 0-based argument slot.
+//~ ------------------------------------------------------------------------
+
+static PExpect lua_pos_call1[] = { PEXPECT("add", 1) };
+static PExpect lua_pos_call0[] = { PEXPECT("add", 0) };
+
+static PCase lua_pcases[] = {
+    PCASE("call_second_arg", "add(1, \0012)\nfunction add(a, b) return a + b end\n", lua_pos_call1),
+    PCASE("call_first_arg",  "add(\0011, 2)\nfunction add(a, b) return a + b end\n", lua_pos_call0),
+};
+
 static Suite lua_suite = {
     "lua",
     (LexInitFn)F4_Lua_LexInit,
@@ -329,6 +342,7 @@ static Suite lua_suite = {
     sizeof(F4_Lua_LexerState),
     lua_cases, ArrayCount(lua_cases),
     F4_Lua_IndexFile, lua_index_cases, ArrayCount(lua_index_cases),
+    F4_Lua_PosContext, lua_pcases, ArrayCount(lua_pcases),
 };
 
 #endif // FCODER_FLEURY_LEXER_TEST_CASES_LUA_H
