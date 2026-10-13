@@ -1,0 +1,19 @@
+# Local build outputs and editor scratch.
+build/
+*.so
+*.dll
+*.pdb
+*.o
+*.obj
+*.dSYM/
+*.i
+
+# 4coder ships a couple of metadata files that are regenerated on each build
+# and churn heavily; keep them out of the repo.
+code/custom/generated/command_metadata.h
+code/custom/generated/managed_id_metadata.cpp
+
+# Editor noise.
+.DS_Store
+*.swp
+*.swo
