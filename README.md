@@ -1,4 +1,4 @@
-# 4coder-fleury
+# 4coder
 
 A working copy of [4coder](https://github.com/4coder-archive/4coder) with
 [Ryan Fleury's customization layer](https://github.com/4coder-archive/4coder_fleury)
@@ -23,8 +23,8 @@ Requires a recent g++ (or clang) and the same X11 / GLX / ALSA / freetype
 packages the upstream 4coder build docs list.
 
 ```sh
-git clone --recursive git@github.com:justaperlhacker/4coder-fleury.git
-cd 4coder-fleury
+git clone --recursive git@github.com:justaperlhacker/4coder.git
+cd 4coder
 ./code/bin/build-linux.sh
 ```
 
