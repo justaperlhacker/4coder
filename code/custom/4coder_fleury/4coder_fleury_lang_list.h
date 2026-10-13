@@ -9,6 +9,9 @@
 #include "4coder_fleury_lang_cpp.cpp"
 #include "4coder_fleury_lang_jai.cpp"
 #include "4coder_fleury_lang_metadesk.cpp"
+#include "4coder_fleury_lang_python.cpp"
+#include "4coder_fleury_lang_lua.cpp"
+#include "4coder_fleury_lang_perl.cpp"
 
 // NOTE(rjf): @f4_register_languages Register languages.
 function void
@@ -61,6 +64,53 @@ F4_RegisterLanguages(void)
                                 F4_MD_PosContext,
                                 F4_MD_Highlight,
                                 Lex_State_Cpp);
+        }
+    }
+    
+    // NOTE: Python
+    {
+        String_Const_u8 extensions[] =
+        {
+            S8Lit("py"), S8Lit("pyi"), S8Lit("pyw"),
+        };
+        for(int i = 0; i < ArrayCount(extensions); i += 1)
+        {
+            F4_RegisterLanguage(extensions[i],
+                                F4_Py_IndexFile,
+                                F4_Py_LexInit,
+                                F4_Py_LexFullInput,
+                                F4_Py_PosContext,
+                                F4_Py_Highlight,
+                                F4_Py_LexerState);
+        }
+    }
+    
+    // NOTE: Lua
+    {
+        F4_RegisterLanguage(S8Lit("lua"),
+                            F4_Lua_IndexFile,
+                            F4_Lua_LexInit,
+                            F4_Lua_LexFullInput,
+                            F4_Lua_PosContext,
+                            F4_Lua_Highlight,
+                            F4_Lua_LexerState);
+    }
+    
+    // NOTE: Perl
+    {
+        String_Const_u8 extensions[] =
+        {
+            S8Lit("pl"), S8Lit("pm"), S8Lit("t"), S8Lit("pod"),
+        };
+        for(int i = 0; i < ArrayCount(extensions); i += 1)
+        {
+            F4_RegisterLanguage(extensions[i],
+                                F4_Perl_IndexFile,
+                                F4_Perl_LexInit,
+                                F4_Perl_LexFullInput,
+                                F4_Perl_PosContext,
+                                F4_Perl_Highlight,
+                                F4_Perl_LexerState);
         }
     }
 }
