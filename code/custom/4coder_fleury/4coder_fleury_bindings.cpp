@@ -89,6 +89,9 @@ F4_SetAbsolutelyNecessaryBindings(Mapping *mapping)
     BindCore(fleury_startup, CoreCode_Startup);
     BindCore(default_try_exit, CoreCode_TryExit);
     Bind(exit_4coder,          KeyCode_F4, KeyCode_Alt);
+    // Alt+Shift+F4: same as Alt+F4 but a chord KDE/Plasma (KWin) does not grab
+    // at the compositor, so it reliably reaches the app under Wayland/XWayland.
+    Bind(exit_4coder,          KeyCode_F4, KeyCode_Alt, KeyCode_Shift);
     BindMouseWheel(mouse_wheel_scroll);
     BindMouseWheel(mouse_wheel_change_face_size, KeyCode_Control);
     

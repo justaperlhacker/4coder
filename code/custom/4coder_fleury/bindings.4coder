@@ -3,6 +3,7 @@ keys_global =
 {
     // NOTE(rjf): Meta
     { "exit_4coder" ,                             "F4",      "Alt"                     },
+    { "exit_4coder" ,                             "F4",      "Alt",      "Shift"       },
     { "keyboard_macro_start_recording" ,          "U",      "Control"                  },
     { "keyboard_macro_finish_recording",          "U",      "Control", "Shift"         },
     { "keyboard_macro_replay",                    "U",      "Alt"                      },
