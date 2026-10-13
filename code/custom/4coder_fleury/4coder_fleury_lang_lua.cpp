@@ -107,9 +107,49 @@ F4_Lua_LongBracketOpen(u8 *s, i64 i, i64 strmax)
     return 0;
 }
 
+//~ NOTE: Index Lua function definitions so the code index colors them and
+//~ drives go-to-definition. Covers `function NAME`, `local function NAME`, and
+//~ the method forms `function M.NAME` / `function M:NAME` (leaf name wins).
 internal F4_LANGUAGE_INDEXFILE(F4_Lua_IndexFile)
 {
-    // NOTE: syntax-only for now; code index hooks land with the "intelligence" pass.
+    for(;!ctx->done;)
+    {
+        Token *name = 0;
+        F4_Index_TokenSkipFlags flags = F4_Index_TokenSkipFlag_SkipWhitespace;
+
+        if(F4_Index_ParsePattern(ctx, "%t%k", "function", TokenBaseKind_Identifier, &name))
+        {
+            for(;;)
+            {
+                b32 dot = F4_Index_PeekToken(ctx, S8Lit("."));
+                b32 colon = F4_Index_PeekToken(ctx, S8Lit(":"));
+                if(!(dot || colon))
+                {
+                    break;
+                }
+                Token *sep = 0;
+                F4_Index_RequireTokenKind(ctx, TokenBaseKind_Operator, &sep, flags);
+                Token *tail = 0;
+                if(F4_Index_RequireTokenKind(ctx, TokenBaseKind_Identifier, &tail, flags))
+                {
+                    name = tail;
+                }
+                else
+                {
+                    break;
+                }
+            }
+            F4_Index_MakeNote(ctx, Ii64(name), F4_Index_NoteKind_Function, 0);
+        }
+        else if(F4_Index_RequireTokenKind(ctx, TokenBaseKind_Comment, &name, flags))
+        {
+            F4_Index_ParseComment(ctx, name);
+        }
+        else
+        {
+            F4_Index_ParseCtx_Inc(ctx, flags);
+        }
+    }
 }
 
 internal F4_LANGUAGE_LEXINIT(F4_Lua_LexInit)

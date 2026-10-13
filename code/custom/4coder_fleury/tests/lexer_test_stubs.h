@@ -124,24 +124,40 @@ internal b32 string_match(String_Const_u8 a, String_Const_u8 b){
     return 1;
 }
 
-//~ Signatures from 4coder_fleury_lang.h so the language files compile as-is.
+// Signatures from 4coder_fleury_lang.h so the language files compile as-is.
+// (F4_LANGUAGE_INDEXFILE is defined in lexer_test_index.h after its ctx type.)
 #define F4_LANGUAGE_LEXINIT(name) void name(void *state_ptr, String_Const_u8 contents)
 #define F4_LANGUAGE_LEXFULLINPUT(name) b32 name(Arena *arena, Token_List *list, void *state_ptr, u64 max)
-#define F4_LANGUAGE_INDEXFILE(name) void name(void *ctx)
 #define F4_LANGUAGE_POSCONTEXT(name) void* name(void *app, Arena *arena, int buffer, i64 pos)
 #define F4_LANGUAGE_HIGHLIGHT(name) void name(void *app, int tl, void *arr, int ct)
 
+//~ Range type mirrors 4coder's Range_i64 field names (min / one_past_last).
+struct Range_i64{ i64 min, one_past_last; };
+#define R_i64 Range_i64
+
 //~ Highlight hook uses these — no-op stubs.
-struct R_i64{ i64 first, one_past_last; };
 #define fleury_color_index_comment_tag 0
 #define F4_ARGBFromID(...) 0
-internal R_i64 text_layout_get_visible_range(void *a, int tl){ (void)a; (void)tl; R_i64 r = {0, 0}; return r; }
+internal Range_i64 text_layout_get_visible_range(void *a, int tl){ (void)a; (void)tl; Range_i64 r = {0, 0}; return r; }
 internal i64 token_index_from_pos(void *a, i64 p){ (void)a; (void)p; return 0; }
 internal int token_iterator_index(void *a, void *b, i64 c){ (void)a; (void)b; (void)c; return 0; }
-internal Token *token_it_read(int *it){ (void)it; return 0; }
-internal b32 token_it_inc_all(int *it){ (void)it; return 0; }
-internal void paint_text_color(void *a, int tl, R_i64 r, int c){ (void)a; (void)tl; (void)r; (void)c; }
-#define Ii64_t(a,b) (R_i64){a,b}
-#define Ii64(t) (R_i64){t.pos, t.pos + t.size}
+internal Token *token_it_read_array(int *it){ (void)it; return 0; }
+internal b32 token_it_inc_all_array(int *it){ (void)it; return 0; }
+internal void paint_text_color(void *a, int tl, Range_i64 r, int c){ (void)a; (void)tl; (void)r; (void)c; }
+#define Ii64_t(a,b) (Range_i64){a,b}
+#define Ii64(t) (Range_i64){(t)->pos, (t)->pos + (t)->size}
+#define Ii64p(a,b) (Range_i64){a,b}
+
+internal String_Const_u8
+string_substring(String_Const_u8 s, Range_i64 r)
+{
+    i64 size = (i64)s.size;
+    i64 min = r.min; if(min < 0) min = 0; if(min > size) min = size;
+    i64 max = r.one_past_last; if(max < min) max = min; if(max > size) max = size;
+    String_Const_u8 result = { s.str + min, (u64)(max - min) };
+    return result;
+}
+
+internal i64 range_size(Range_i64 r){ return r.one_past_last - r.min; }
 
 #endif // FCODER_FLEURY_LEXER_TEST_STUBS_H

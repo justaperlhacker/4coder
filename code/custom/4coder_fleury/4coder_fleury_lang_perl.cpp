@@ -142,9 +142,51 @@ F4_Perl_PrevEndsTerm(Token_Base_Kind k)
     return 0;
 }
 
+//~ NOTE: Index Perl definitions. `sub NAME` -> Function, `package NAME` -> Type
+//~ (namespaces color like types), `use constant NAME => ...` -> Constant.
+//~ Package chains (`My::Deep`) resolve to the leaf segment.
 internal F4_LANGUAGE_INDEXFILE(F4_Perl_IndexFile)
 {
-    // NOTE: syntax-only for now; code index hooks land with the "intelligence" pass.
+    for(;!ctx->done;)
+    {
+        Token *name = 0;
+        F4_Index_TokenSkipFlags flags = F4_Index_TokenSkipFlag_SkipWhitespace;
+
+        if(F4_Index_ParsePattern(ctx, "%t%k", "sub", TokenBaseKind_Identifier, &name))
+        {
+            F4_Index_MakeNote(ctx, Ii64(name), F4_Index_NoteKind_Function, 0);
+        }
+        else if(F4_Index_ParsePattern(ctx, "%t%k", "package", TokenBaseKind_Identifier, &name))
+        {
+            while(F4_Index_PeekToken(ctx, S8Lit("::")))
+            {
+                Token *sep = 0;
+                F4_Index_RequireTokenKind(ctx, TokenBaseKind_Operator, &sep, flags);
+                Token *tail = 0;
+                if(F4_Index_RequireTokenKind(ctx, TokenBaseKind_Identifier, &tail, flags))
+                {
+                    name = tail;
+                }
+                else
+                {
+                    break;
+                }
+            }
+            F4_Index_MakeNote(ctx, Ii64(name), F4_Index_NoteKind_Type, F4_Index_NoteFlag_ProductType);
+        }
+        else if(F4_Index_ParsePattern(ctx, "%t%t%k", "use", "constant", TokenBaseKind_Identifier, &name))
+        {
+            F4_Index_MakeNote(ctx, Ii64(name), F4_Index_NoteKind_Constant, 0);
+        }
+        else if(F4_Index_RequireTokenKind(ctx, TokenBaseKind_Comment, &name, flags))
+        {
+            F4_Index_ParseComment(ctx, name);
+        }
+        else
+        {
+            F4_Index_ParseCtx_Inc(ctx, flags);
+        }
+    }
 }
 
 internal F4_LANGUAGE_LEXINIT(F4_Perl_LexInit)

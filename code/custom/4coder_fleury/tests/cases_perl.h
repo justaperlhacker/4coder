@@ -482,12 +482,47 @@ static Case perl_cases[] = {
     CASE0("whitespace_only",               "  \n\t\n"),
 };
 
+//~ ------------------------------------------------------------------------
+//~ Index cases — definitions the IndexFile should extract as symbols.
+//~ ------------------------------------------------------------------------
+
+static IndexExpect perl_idx_sub[] = {
+    IEXPECT(F4_Index_NoteKind_Function, "greet"),
+};
+
+static IndexExpect perl_idx_package[] = {
+    IEXPECT(F4_Index_NoteKind_Type, "My"),
+};
+
+static IndexExpect perl_idx_package_chain[] = {
+    IEXPECT(F4_Index_NoteKind_Type, "Greeter"),
+};
+
+static IndexExpect perl_idx_use_constant[] = {
+    IEXPECT(F4_Index_NoteKind_Constant, "MAX"),
+};
+
+static IndexExpect perl_idx_sub_and_pkg[] = {
+    IEXPECT(F4_Index_NoteKind_Type, "Greeter"),
+    IEXPECT(F4_Index_NoteKind_Function, "new"),
+};
+
+static IndexCase perl_index_cases[] = {
+    ICASE("sub",                 "sub greet { return 1 }\n", perl_idx_sub),
+    ICASE("package",             "package My;\n1;\n", perl_idx_package),
+    ICASE("package_chain",       "package My::Deep::Greeter;\n1;\n", perl_idx_package_chain),
+    ICASE("use_constant",        "use constant MAX => 10;\n", perl_idx_use_constant),
+    ICASE("package_and_sub",
+          "package Greeter; sub new { my $s = bless {}; return $s }\n", perl_idx_sub_and_pkg),
+};
+
 static Suite perl_suite = {
     "perl",
     (LexInitFn)F4_Perl_LexInit,
     (LexFullInputFn)F4_Perl_LexFullInput,
     sizeof(F4_Perl_LexerState),
     perl_cases, ArrayCount(perl_cases),
+    F4_Perl_IndexFile, perl_index_cases, ArrayCount(perl_index_cases),
 };
 
 #endif // FCODER_FLEURY_LEXER_TEST_CASES_PERL_H

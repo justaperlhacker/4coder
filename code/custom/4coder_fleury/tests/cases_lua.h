@@ -289,12 +289,46 @@ static Case lua_cases[] = {
     CASE0("whitespace_only",        "  \n\t\n"),
 };
 
+//~ ------------------------------------------------------------------------
+//~ Index cases — definitions the IndexFile should extract as symbols.
+//~ ------------------------------------------------------------------------
+
+static IndexExpect lua_idx_plain[] = {
+    IEXPECT(F4_Index_NoteKind_Function, "add"),
+};
+
+static IndexExpect lua_idx_local_func[] = {
+    IEXPECT(F4_Index_NoteKind_Function, "helper"),
+};
+
+static IndexExpect lua_idx_method_dot[] = {
+    IEXPECT(F4_Index_NoteKind_Function, "greet"),
+};
+
+static IndexExpect lua_idx_method_colon[] = {
+    IEXPECT(F4_Index_NoteKind_Function, "draw"),
+};
+
+static IndexExpect lua_idx_comment_tag[] = {
+    //~ ParseComment files the tag from '@' to end-of-comment (matches real F4).
+    IEXPECT(F4_Index_NoteKind_CommentTag, "@api exported"),
+};
+
+static IndexCase lua_index_cases[] = {
+    ICASE("plain_function",      "function add(a, b) return a + b end\n", lua_idx_plain),
+    ICASE("local_function",      "local function helper() end\n", lua_idx_local_func),
+    ICASE("module_method_dot",   "function M.greet(name) end\n", lua_idx_method_dot),
+    ICASE("object_method_colon", "function obj:draw() end\n", lua_idx_method_colon),
+    ICASE("comment_tag",         "-- @api exported\nlocal t = {}\n", lua_idx_comment_tag),
+};
+
 static Suite lua_suite = {
     "lua",
     (LexInitFn)F4_Lua_LexInit,
     (LexFullInputFn)F4_Lua_LexFullInput,
     sizeof(F4_Lua_LexerState),
     lua_cases, ArrayCount(lua_cases),
+    F4_Lua_IndexFile, lua_index_cases, ArrayCount(lua_index_cases),
 };
 
 #endif // FCODER_FLEURY_LEXER_TEST_CASES_LUA_H

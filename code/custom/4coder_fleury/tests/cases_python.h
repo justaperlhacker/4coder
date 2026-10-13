@@ -351,12 +351,61 @@ static Case py_cases[] = {
     CASE0("whitespace_only",    "  \n\t\n"),
 };
 
+//~ ------------------------------------------------------------------------
+//~ Index cases — definitions the IndexFile should extract as symbols.
+//~ ------------------------------------------------------------------------
+
+static IndexExpect py_idx_func_class[] = {
+    IEXPECT(F4_Index_NoteKind_Type, "Greeter"),
+    IEXPECT(F4_Index_NoteKind_Function, "greet"),
+};
+
+static IndexExpect py_idx_methods[] = {
+    IEXPECT(F4_Index_NoteKind_Type, "Widget"),
+    IEXPECT(F4_Index_NoteKind_Function, "__init__"),
+    IEXPECT(F4_Index_NoteKind_Function, "draw"),
+};
+
+static IndexExpect py_idx_decorated[] = {
+    IEXPECT(F4_Index_NoteKind_Function, "handler"),
+};
+
+static IndexExpect py_idx_async[] = {
+    IEXPECT(F4_Index_NoteKind_Function, "fetch"),
+};
+
+static IndexExpect py_idx_comment_tag[] = {
+    //~ ParseComment files the tag from '@' to end-of-comment (matches real F4),
+    //~ and the `def f` is indexed as its own Function note.
+    IEXPECT(F4_Index_NoteKind_CommentTag, "@note something worth indexing"),
+    IEXPECT(F4_Index_NoteKind_Function, "f"),
+};
+
+static IndexCase py_index_cases[] = {
+    ICASE("func_and_class",
+          "class Greeter:\n    def greet(self):\n        pass\n",
+          py_idx_func_class),
+    ICASE("nested_methods",
+          "class Widget:\n    def __init__(self):\n        self.ready = True\n    def draw(self):\n        pass\n",
+          py_idx_methods),
+    ICASE("decorated_func",
+          "@staticmethod\ndef handler(x):\n    return x\n",
+          py_idx_decorated),
+    ICASE("async_func",
+          "async def fetch(url):\n    return url\n",
+          py_idx_async),
+    ICASE("comment_tag",
+          "# @note something worth indexing\ndef f():\n    pass\n",
+          py_idx_comment_tag),
+};
+
 static Suite py_suite = {
     "python",
     (LexInitFn)F4_Py_LexInit,
     (LexFullInputFn)F4_Py_LexFullInput,
     sizeof(F4_Py_LexerState),
     py_cases, ArrayCount(py_cases),
+    F4_Py_IndexFile, py_index_cases, ArrayCount(py_index_cases),
 };
 
 #endif // FCODER_FLEURY_LEXER_TEST_CASES_PYTHON_H

@@ -19,6 +19,7 @@
    Run:    ./lexer_tests       (or: ./run.sh -v for full token dumps) */
 
 #include "lexer_test_stubs.h"
+#include "lexer_test_index.h"
 
 //~ The lexers themselves — same sources the editor compiles into
 //~ custom_4coder.so via 4coder_fleury.cpp.
