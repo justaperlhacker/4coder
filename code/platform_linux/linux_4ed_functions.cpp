@@ -521,7 +521,12 @@ internal f32
 system_get_screen_scale_factor(void){
     LINUX_FN_DEBUG();
     // TODO: correct screen number somehow
-    int dpi = linux_get_xsettings_dpi(linuxvars.dpy, 0);
+    // Order: user resource DB (xrdb Xft.dpi - the desktop scale that survives
+    // XWayland/KDE-Wayland), then the XSETTINGS daemon, then physical size.
+    int dpi = linux_get_resource_manager_dpi(linuxvars.dpy);
+    if(dpi == -1){
+        dpi = linux_get_xsettings_dpi(linuxvars.dpy, 0);
+    }
     if(dpi == -1){
         int scr = DefaultScreen(linuxvars.dpy);
         int dw = DisplayWidth(linuxvars.dpy, scr);

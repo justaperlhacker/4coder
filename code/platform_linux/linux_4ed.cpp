@@ -542,6 +542,46 @@ linux_get_xsettings_dpi(Display* dpy, int screen){
     return dpi;
 }
 
+//~ Read the user's X11 resource DB (RESOURCE_MANAGER, i.e. `xrdb`) for
+//~ `Xft.dpi`. On XWayland / KDE-Wayland this is where the desktop's scale
+//~ actually lands (e.g. Xft.dpi: 168 == 1.75x), whereas the XSETTINGS
+//~ selection and the DisplayWidthMM physical size both report 96. Returns
+//~ the dpi, or -1 when unset / unparseable.
+internal int
+linux_get_resource_manager_dpi(Display* dpy){
+    int dpi = -1;
+    char *rm = XResourceManagerString(dpy);
+    if (rm){
+        static const char key[] = "Xft.dpi:";
+        const char *p = rm;
+        while ((p = strstr(p, key))){
+            // must be the start of a resource line (not e.g. "MyXft.dpi:")
+            if (p != rm && *(p - 1) != '\n'){
+                p += 1;
+                continue;
+            }
+            p += sizeof(key) - 1;
+            while (*p == ' ' || *p == '\t') p++;
+            if (*p < '0' || *p > '9'){
+                continue;
+            }
+            int v = 0;
+            while (*p >= '0' && *p <= '9'){
+                v = v*10 + (*p - '0');
+                p++;
+                if (v > 100000){
+                    break;
+                }
+            }
+            if (v > 0){
+                dpi = v;
+                break;
+            }
+        }
+    }
+    return dpi;
+}
+
 internal void*
 linux_thread_proc_start(void* arg) {
     Linux_Object* info = (Linux_Object*)arg;
