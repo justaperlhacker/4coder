@@ -1,0 +1,3 @@
+[submodule "4coder-non-source"]
+	path = 4coder-non-source
+	url = https://github.com/4coder-archive/4coder-non-source.git
