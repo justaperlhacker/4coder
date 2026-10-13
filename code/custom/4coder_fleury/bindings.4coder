@@ -173,6 +173,8 @@ keys_file =
     // NOTE(rjf): Go To Def
     { "f4_go_to_definition",   "Return", "Control" },
     { "f4_go_to_definition_same_panel", "Return", "Control", "Shift" },
+    { "f4_tags_go_to_definition", "G", "Control" },
+    { "f4_rebuild_tags", "T", "Control", "Shift" },
     
     // NOTE(rjf): Helpers
     { "f4_write_zero_struct",  "0", "Control" },

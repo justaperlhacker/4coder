@@ -180,6 +180,15 @@ CUSTOM_DOC("Goes to the definition of the identifier under the cursor.")
     String_Const_u8 string = push_token_or_word_under_active_cursor(app, scratch);
     F4_Index_Note *note = F4_Index_LookupNote(string);
     note = F4_FindMostIntuitiveNoteInDuplicateChain(note, buffer, view_get_cursor_pos(app, view));
+    if(note == 0 && F4_Tags_Enabled(app))
+    {
+        // Live index only covers open buffers; fall back to ctags for the
+        // whole project when it can't answer.
+        if(F4_Tags_GoToDef(app, view))
+        {
+            return;
+        }
+    }
     F4_GoToDefinition(app, note, 0);
 }
 
@@ -192,6 +201,13 @@ CUSTOM_DOC("Goes to the definition of the identifier under the cursor in the sam
     String_Const_u8 string = push_token_or_word_under_active_cursor(app, scratch);
     F4_Index_Note *note = F4_Index_LookupNote(string);
     note = F4_FindMostIntuitiveNoteInDuplicateChain(note, buffer, view_get_cursor_pos(app, view));
+    if(note == 0 && F4_Tags_Enabled(app))
+    {
+        if(F4_Tags_GoToDef(app, view))
+        {
+            return;
+        }
+    }
     F4_GoToDefinition(app, note, 1);
 }
 

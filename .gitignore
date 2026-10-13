@@ -15,6 +15,7 @@ code/custom/generated/managed_id_metadata.cpp
 
 # Standalone lexer test binary (built by tests/run.sh).
 code/custom/4coder_fleury/tests/lexer_tests
+code/custom/4coder_fleury/tests/tags_tests
 
 # Editor noise.
 .DS_Store

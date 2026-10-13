@@ -176,6 +176,8 @@ F4_SetDefaultBindings(Mapping *mapping)
     
     // NOTE(rjf): Custom bindings.
     {
+        Bind(f4_rebuild_tags,             KeyCode_T, KeyCode_Control, KeyCode_Shift);
+        Bind(f4_tags_go_to_definition,    KeyCode_G, KeyCode_Control);
         Bind(open_panel_vsplit, KeyCode_P, KeyCode_Control);
         Bind(open_panel_hsplit, KeyCode_Minus, KeyCode_Control);
         Bind(close_panel, KeyCode_P, KeyCode_Control, KeyCode_Shift);

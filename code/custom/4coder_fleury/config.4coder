@@ -97,3 +97,11 @@ default_flags_sh  = "-g";
 // f4_poscontext_draw_at_bottom_of_buffer = true;
 // f4_disable_poscontext = true;
 // f4_disable_cursor_token_occurance = true;
+
+//~ NOTE(rjf): ctags-backed project-wide go-to-definition.
+// Ctrl+Shift+T runs `f4_rebuild_tags` (ctags -R in the hot directory); Ctrl+G
+// runs it directly; plain Ctrl+Return (f4_go_to_definition) falls back to tags
+// automatically when the live index (open buffers only) can't answer.
+//   tags_file            = "tags";        // relative to the hot directory, or absolute
+//   tags_languages       = "Python,Perl,Lua";  // passed to `ctags --languages=`
+//   disable_tags_fallback = true;         // set to opt the go-to-def fallback out
